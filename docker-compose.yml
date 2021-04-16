@@ -1,0 +1,27 @@
+version: "3.5"
+
+services:
+  server:
+    image: golang:1.15.2-alpine
+    volumes:
+      - .:/server
+    working_dir: /server
+    ports:
+      - "5005:5005"
+    depends_on: #等待啟動完成
+      - db
+      - redis
+    entrypoint: go run main.go
+    restart: always
+  db:
+    image: postgres:9.6.5-alpine
+    ports:
+      - "5432:5432"
+    restart: always
+    #volumes: # 目前不需要初始化某些東西如 create table等
+    #  - ./go-server/initdb.sh:/docker-entrypoint-initdb.d/init.sh
+  redis:
+    image: redis:6.2.1-alpine
+    ports:
+        - "6379:6379"
+    restart: always

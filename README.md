@@ -1,0 +1,1 @@
+docker exec -it 001-golang-gambling-inone_server_1 /bin/sh

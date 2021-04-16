@@ -7,7 +7,7 @@
 
 執行方式
 ```bash
-git pull https://github.com/singer0503/Golang-Gambling-InOne.git
+git clone https://github.com/singer0503/Golang-Gambling-InOne.git
 cd Golang-Gambling-InOne
 docker-compose up
 ```

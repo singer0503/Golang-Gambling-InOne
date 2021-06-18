@@ -27,7 +27,7 @@ func init() {
 
 	//初始化 redis
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: "redis:6379", //因為在 docker-compose 的服務名稱為redis，不然一般來說是 localhost 或 ip
+		Addr: viper.GetString("REDIS_ADDRESS"), // "redis:6379", //因為在 docker-compose 的服務名稱為redis，不然一般來說是 localhost 或 ip
 		//Password: "a12345", // no password set
 		DB: 0, // use default DB
 	})

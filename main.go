@@ -1,6 +1,10 @@
 package main
 
 import (
+	_rouletteHandlerHttpDelivery "Golang-Gambling-InOne/roulette/delivery/http"
+	_rouletteRepo "Golang-Gambling-InOne/roulette/repository/postgresql"
+	_rouletteUsecase "Golang-Gambling-InOne/roulette/usecase"
+
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -9,6 +13,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	melody "gopkg.in/olahol/melody.v1"
 
 	_ "github.com/lib/pq" // 這是 postgres 的 driver 需要做初始化
 )
@@ -33,7 +38,7 @@ func init() {
 	})
 	pong, err := redisClient.Ping().Result()
 	if err == nil {
-		logrus.Println("redis 回應成功，", pong)
+		logrus.Println("redis 回應成功， Ping / ", pong)
 	} else {
 		logrus.Fatal("redis 無法連線，錯誤為", err)
 	}
@@ -57,26 +62,40 @@ func init() {
 }
 
 func main() {
+
+	// 啟動前先刪除整個 redis db
+	deleteMsg, err2 := redisClient.FlushDB().Result()
+	fmt.Println("===================")
+	fmt.Println(deleteMsg) // 回傳是否刪除成功
+	fmt.Println(err2)      // 是否有錯誤訊息
+	fmt.Println("===================")
+
+	server := gin.Default()
+	server.LoadHTMLGlob("template/html/*")
+	server.Static("/assets", "./template/assets")
+
+	server.GET("/", func(c *gin.Context) {
+		// 在http包使用的時候，註冊了/這個根路徑的模式處理，瀏覽器會自動的請求 favicon.ico，要注意處理，否則會出現兩次請求
+		if c.Request.RequestURI == "/favicon.ico" {
+			return
+		}
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
+
+	webSocket := melody.New()
+
+	// 建立 repository
+	fmt.Println("=================== Create repository Instance")
+	rouletteRepo := _rouletteRepo.NewPostgresqlRouletteRepository(db)
+
+	// 建立 usecase
+	rouletteUsecase := _rouletteUsecase.NewRouletteUsecase(rouletteRepo)
+
+	// 建立路由, gin , melody, redis 是從外部丟進去的
+	_rouletteHandlerHttpDelivery.NewRouletteHandler(server, webSocket, redisClient, rouletteUsecase)
+
 	logrus.Info("HTTP server started")
 	restfulHost := viper.GetString("RESTFUL_HOST")
 	restfulPort := viper.GetString("RESTFUL_PORT")
-	server := gin.Default()
-	server.GET("/", GetTest)
-	server.GET("/headers", GetHeaders)
 	logrus.Fatal(server.Run(restfulHost + ":" + restfulPort))
-}
-
-// 測試是否能正常連接
-func GetTest(c *gin.Context) {
-	result := "{'msg':'test ok!'}"
-	c.JSON(http.StatusOK, result)
-}
-
-// 回傳主機看到的 headers
-func GetHeaders(c *gin.Context) {
-	for name, headers := range c.Request.Header {
-		for _, h := range headers {
-			fmt.Fprintf(c.Writer, "%v: %v\n", name, h)
-		}
-	}
 }
